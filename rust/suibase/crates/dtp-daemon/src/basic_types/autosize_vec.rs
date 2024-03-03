@@ -1,4 +1,4 @@
-use super::ManagedVecUSize;
+use super::ManagedVecU8;
 
 #[derive(Clone)]
 pub struct AutoSizeVec<T> {
@@ -22,7 +22,7 @@ impl<T: Default> AutoSizeVec<T> {
     // Use instead get_if_some() for read-only operations that do not
     // create default T object if not already in the AutoSizeVec.
     //
-    pub fn get(&mut self, leader_index: ManagedVecUSize) -> &T {
+    pub fn get(&mut self, leader_index: ManagedVecU8) -> &T {
         let usize_index = usize::from(leader_index);
         // Extend the size of self.data if leader_index is out-of-bounds of self.data
         if usize_index > self.data.len() {
@@ -37,7 +37,7 @@ impl<T: Default> AutoSizeVec<T> {
         self.data.get(usize_index).and_then(|v| v.as_ref()).unwrap()
     }
 
-    pub fn get_mut(&mut self, leader_index: ManagedVecUSize) -> &mut T {
+    pub fn get_mut(&mut self, leader_index: ManagedVecU8) -> &mut T {
         let usize_index = usize::from(leader_index);
         // Extend the size of self.data if leader_index is out-of-bounds of self.data
         if usize_index > self.data.len() {
@@ -55,7 +55,7 @@ impl<T: Default> AutoSizeVec<T> {
             .unwrap()
     }
 
-    pub fn get_if_some(&self, leader_index: ManagedVecUSize) -> Option<&T> {
+    pub fn get_if_some(&self, leader_index: ManagedVecU8) -> Option<&T> {
         let usize_index = usize::from(leader_index);
         // Extend the size of self.data if leader_index is out-of-bounds of self.data
         if usize_index >= self.data.len() {
@@ -65,21 +65,21 @@ impl<T: Default> AutoSizeVec<T> {
     }
 
     // Implement Iter and IterMut to iterate over the used cells.
-    pub fn into_iter(self) -> impl Iterator<Item = (ManagedVecUSize, T)> {
+    pub fn into_iter(self) -> impl Iterator<Item = (ManagedVecU8, T)> {
         self.data
             .into_iter()
             .enumerate()
             .filter_map(|(index, cell)| cell.map(|value| (index.try_into().unwrap(), value)))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (ManagedVecUSize, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (ManagedVecU8, &T)> {
         self.data.iter().enumerate().filter_map(|(index, cell)| {
             cell.as_ref()
                 .map(|value| (index.try_into().unwrap(), value))
         })
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (ManagedVecUSize, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (ManagedVecU8, &mut T)> {
         self.data
             .iter_mut()
             .enumerate()

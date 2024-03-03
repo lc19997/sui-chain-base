@@ -2,8 +2,8 @@
 //
 // This is used for fast indexing tricks versus HashMap lookup.
 //
-// Optimized for relatively small arrays that rarely changes and owns
-// its elements.
+// Optimized for relatively small arrays (,256 elements) that
+// rarely changes.
 //
 // Intended use case: configuration in memory that must be lookup often
 // in a RwLock.
@@ -13,7 +13,7 @@
 // Stored elements should have a variable like this:
 //
 //   struct MyStruct {
-//      idx: Option<ManagedVecUSize>, ...
+//      idx: Option<ManagedVecU8>, ...
 //   }
 //   impl MyStruct {
 //      fn new() -> Self { idx: None, ... }
@@ -26,17 +26,17 @@
 // This 'idx' can be copied in other data structure (like a "pointer")
 // and be later used with get() and get_mut() for fast access.
 
-pub type ManagedVecUSize = u8;
+pub type ManagedVecU8 = u8;
 
 #[derive(Debug)]
 pub struct ManagedVec<T> {
     data: Vec<Option<T>>,
-    some_len: ManagedVecUSize,
+    some_len: ManagedVecU8,
 }
 
 pub trait ManagedElement {
-    fn idx(&self) -> Option<ManagedVecUSize>;
-    fn set_idx(&mut self, index: Option<ManagedVecUSize>);
+    fn idx(&self) -> Option<ManagedVecU8>;
+    fn set_idx(&mut self, index: Option<ManagedVecU8>);
 }
 
 impl<T: ManagedElement> ManagedVec<T> {
@@ -49,12 +49,12 @@ impl<T: ManagedElement> ManagedVec<T> {
 
     // That is the only time the index is set and returned.
     // TODO Verify handling of out of range index.
-    pub fn push(&mut self, mut value: T) -> Option<ManagedVecUSize> {
+    pub fn push(&mut self, mut value: T) -> Option<ManagedVecU8> {
         self.some_len += 1;
         // Iterate to find a free cell before creating a new one.
         for (index, cell) in self.data.iter_mut().enumerate() {
             if cell.is_none() {
-                let managed_idx: ManagedVecUSize = index.try_into().unwrap();
+                let managed_idx: ManagedVecU8 = index.try_into().unwrap();
                 value.set_idx(Some(managed_idx));
                 *cell = Some(value);
                 return Some(managed_idx);
@@ -62,20 +62,20 @@ impl<T: ManagedElement> ManagedVec<T> {
         }
 
         let index = self.data.len();
-        let managed_idx: ManagedVecUSize = index.try_into().unwrap();
+        let managed_idx: ManagedVecU8 = index.try_into().unwrap();
         value.set_idx(Some(managed_idx));
         self.data.push(Some(value));
         Some(managed_idx)
     }
 
     // TODO Verify getting OOB have no effect.
-    pub fn get(&self, index: ManagedVecUSize) -> Option<&T> {
+    pub fn get(&self, index: ManagedVecU8) -> Option<&T> {
         let usize_index = usize::from(index);
         self.data.get(usize_index).and_then(|v| v.as_ref())
     }
 
     // TODO Verify getting OOB have no effect.
-    pub fn get_mut(&mut self, index: ManagedVecUSize) -> Option<&mut T> {
+    pub fn get_mut(&mut self, index: ManagedVecU8) -> Option<&mut T> {
         self.data
             .get_mut(usize::from(index))
             .and_then(|v| v.as_mut())
@@ -85,7 +85,7 @@ impl<T: ManagedElement> ManagedVec<T> {
     // might re-use that cell (the same index).
     //
     // TODO Verify remove OOB have no effect.
-    pub fn remove(&mut self, index: ManagedVecUSize) -> Option<T> {
+    pub fn remove(&mut self, index: ManagedVecU8) -> Option<T> {
         let usize_index = usize::from(index);
         self.data.get(usize_index)?;
         let mut ret_value = self.data.get_mut(usize_index).and_then(|v| v.take());
@@ -100,7 +100,7 @@ impl<T: ManagedElement> ManagedVec<T> {
         ret_value
     }
 
-    pub fn len(&self) -> ManagedVecUSize {
+    pub fn len(&self) -> ManagedVecU8 {
         self.some_len
     }
 
@@ -109,21 +109,21 @@ impl<T: ManagedElement> ManagedVec<T> {
     }
 
     // Implement Iter and IterMut to iterate over the used cells.
-    pub fn into_iter(self) -> impl Iterator<Item = (ManagedVecUSize, T)> {
+    pub fn into_iter(self) -> impl Iterator<Item = (ManagedVecU8, T)> {
         self.data
             .into_iter()
             .enumerate()
             .filter_map(|(index, cell)| cell.map(|value| (index.try_into().unwrap(), value)))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (ManagedVecUSize, &T)> {
+    pub fn iter(&self) -> impl Iterator<Item = (ManagedVecU8, &T)> {
         self.data.iter().enumerate().filter_map(|(index, cell)| {
             cell.as_ref()
                 .map(|value| (index.try_into().unwrap(), value))
         })
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (ManagedVecUSize, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (ManagedVecU8, &mut T)> {
         self.data
             .iter_mut()
             .enumerate()
@@ -144,7 +144,7 @@ impl<T: ManagedElement> Default for ManagedVec<T> {
 
 fn len() {
     struct TS {
-        idx: Option<ManagedVecUSize>,
+        idx: Option<ManagedVecU8>,
         _value: u8,
     }
 
@@ -158,10 +158,10 @@ fn len() {
     }
 
     impl ManagedElement for TS {
-        fn idx(&self) -> Option<ManagedVecUSize> {
+        fn idx(&self) -> Option<ManagedVecU8> {
             self.idx
         }
-        fn set_idx(&mut self, index: Option<ManagedVecUSize>) {
+        fn set_idx(&mut self, index: Option<ManagedVecU8>) {
             self.idx = index;
         }
     }
